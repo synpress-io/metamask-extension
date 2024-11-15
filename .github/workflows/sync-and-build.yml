@@ -71,7 +71,16 @@ jobs:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
+
+          # Check if release already exists
+          if gh release view "v${VERSION}-no-lavamoat" --repo ${{ github.repository }} &>/dev/null; then
+            echo "Release v${VERSION}-no-lavamoat already exists. Skipping release creation."
+            exit 0
+          fi
+
+          # Create the release if it doesn't exist
           gh release create "v${VERSION}-no-lavamoat" \
+            --repo ${{ github.repository }} \
             --title "v${VERSION} (No LavaMoat)" \
             --notes "MetaMask v${VERSION} built without LavaMoat" \
             ./builds/metamask-chrome-*.zip \
