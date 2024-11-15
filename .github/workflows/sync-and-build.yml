@@ -68,7 +68,7 @@ jobs:
 
       - name: Create Release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           VERSION=$(node -p "require('./package.json').version")
           gh release create "v${VERSION}-no-lavamoat" \
