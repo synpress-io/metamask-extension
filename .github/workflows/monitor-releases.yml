@@ -8,15 +8,30 @@ jobs:
   check-releases:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_TOKEN }}
+
       - name: Check for new releases
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GH_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          LATEST_RELEASE=$(curl -s "https://api.github.com/repos/MetaMask/metamask-extension/releases/latest" | jq -r .tag_name)
+          # Get latest upstream release
+          LATEST_RELEASE=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
+            "https://api.github.com/repos/MetaMask/metamask-extension/releases/latest" | jq -r .tag_name)
           echo "Latest upstream release: $LATEST_RELEASE"
 
+          # Check if we already have this release
+          if gh release view "${LATEST_RELEASE}-no-lavamoat" &>/dev/null; then
+            echo "Release ${LATEST_RELEASE}-no-lavamoat already exists. Skipping."
+            exit 0
+          fi
+
+          # If we don't have the release, trigger the build
           curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Authorization: token ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
             -d "{\"event_type\": \"upstream-release\", \"client_payload\": {\"release\": \"$LATEST_RELEASE\"}}" \
             "https://api.github.com/repos/${{ github.repository }}/dispatches"
