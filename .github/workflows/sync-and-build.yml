@@ -1,0 +1,74 @@
+name: Sync Fork and Build Without LavaMoat
+
+on:
+  # Trigger on new releases in the original repo
+  repository_dispatch:
+    types: [upstream-release]
+  # Allow manual trigger
+  workflow_dispatch:
+  # Check for updates every day
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  sync-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/MetaMask/metamask-extension.git
+          git fetch upstream
+
+      - name: Sync with upstream
+        run: |
+          git checkout develop
+          git merge upstream/develop
+          git push origin develop
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup environment
+        env:
+          INFURA_PROJECT_ID: ${{ secrets.INFURA_PROJECT_ID }}
+        run: |
+          # Copy the dist file
+          cp .metamaskrc.dist .metamaskrc
+          # Use different sed syntax for Linux
+          if [[ "$OSTYPE" == "darwin"* ]]; then
+            sed -i '' "s/INFURA_PROJECT_ID=.*/INFURA_PROJECT_ID=$INFURA_PROJECT_ID/g" .metamaskrc
+          else
+            sed -i "s/INFURA_PROJECT_ID=.*/INFURA_PROJECT_ID=$INFURA_PROJECT_ID/g" .metamaskrc
+          fi
+
+      - name: Install dependencies
+        run: yarn install
+
+      - name: Build without LavaMoat
+        run: yarn dist --apply-lavamoat=false
+
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          gh release create "v${VERSION}-no-lavamoat" \
+            --title "v${VERSION} (No LavaMoat)" \
+            --notes "MetaMask v${VERSION} built without LavaMoat" \
+            ./builds/metamask-chrome-*.zip \
+            ./builds/metamask-firefox-*.zip
