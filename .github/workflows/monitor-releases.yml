@@ -10,7 +10,7 @@ jobs:
     steps:
       - name: Check for new releases
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           LATEST_RELEASE=$(curl -s "https://api.github.com/repos/MetaMask/metamask-extension/releases/latest" | jq -r .tag_name)
           echo "Latest upstream release: $LATEST_RELEASE"
