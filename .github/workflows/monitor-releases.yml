@@ -34,5 +34,6 @@ jobs:
           gh api \
             repos/${{ github.repository }}/dispatches \
             -X POST \
-            -F event_type=upstream-release \
-            -F client_payload="{\"release\":\"$LATEST_RELEASE\"}"
+            -H "Accept: application/vnd.github.v3+json" \
+            --field event_type=upstream-release \
+            --raw-field client_payload='{"release":"'"$LATEST_RELEASE"'"}'
