@@ -33,11 +33,19 @@ jobs:
       - name: Sync with upstream
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          RELEASE_TAG: ${{ github.event.client_payload.release }}
         run: |
           git checkout develop
-          git merge upstream/develop
-          git push origin develop
+          git fetch upstream --tags  # Fetch all tags
 
+          # If triggered by monitor, checkout the specific release tag
+          if [ -n "$RELEASE_TAG" ]; then
+            git checkout $RELEASE_TAG
+          else
+            git merge upstream/develop
+          fi
+
+          git push origin develop
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -69,8 +77,14 @@ jobs:
       - name: Create Release
         env:
           GH_TOKEN: ${{ secrets.PAT_TOKEN }}
+          RELEASE_TAG: ${{ github.event.client_payload.release }}
         run: |
-          VERSION=$(node -p "require('./package.json').version")
+          # Use the tag version if provided, otherwise use package.json
+          if [ -n "$RELEASE_TAG" ]; then
+            VERSION=${RELEASE_TAG#v}  # Remove 'v' prefix if present
+          else
+            VERSION=$(node -p "require('./package.json').version")
+          fi
 
           # Check if release already exists
           if gh release view "v${VERSION}-no-lavamoat" --repo ${{ github.repository }} &>/dev/null; then
@@ -78,7 +92,7 @@ jobs:
             exit 0
           fi
 
-          # Create the release if it doesn't exist
+          # Create the release
           gh release create "v${VERSION}-no-lavamoat" \
             --repo ${{ github.repository }} \
             --title "v${VERSION} (No LavaMoat)" \
