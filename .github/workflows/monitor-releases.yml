@@ -31,9 +31,9 @@ jobs:
           fi
 
           # If we don't have the release, trigger the build
-          gh api \
-            repos/${{ github.repository }}/dispatches \
-            -X POST \
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.PAT_TOKEN }}" \
             -H "Accept: application/vnd.github.v3+json" \
-            --field event_type=upstream-release \
-            --raw-field client_payload='{"release":"'"$LATEST_RELEASE"'"}'
+            -H "Content-Type: application/json" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d "{\"event_type\": \"upstream-release\", \"client_payload\": {\"release\": \"$LATEST_RELEASE\"}}"
